@@ -1,6 +1,7 @@
 # Import python packages
 import streamlit as st
 import snowflake.connector
+import requests
 
 # Write directly to the app
 st.title(f" :cup_with_straw: Example Streamlit App :cup_with_straw: {st.__version__}")
@@ -35,6 +36,9 @@ ingredients_list = st.multiselect(
     fruit_options,
     max_selections=5
 )
+
+smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+st.text(smoothiefroot_response)
 
 if ingredients_list:
     ingredients_string = " ".join(ingredients_list)
