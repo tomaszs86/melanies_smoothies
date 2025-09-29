@@ -1,48 +1,45 @@
 # Import python packages
 import streamlit as st
 import requests
+# ZMIENIONO: Używamy Snowpark
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 import pandas as pd
 
 # Write directly to the app
-st.title("Customize Your Smoothie!")
+st.title(f" :cup_with_straw: Customize Your Smoothie! :cup_with_straw: ")
 st.write(
     """Witaj w aplikacji Smoothie Ordering App!"""
 )
 
-# 1. Połączenie z sesją Snowpark
-# Ta funkcja jest gwarantowana, że działa w SiS.
+name_on_order = st.text_input("Name on Smoothie:")
+st.write("The name on your Smoothie will be: ", name_on_order)
+
+# ZMIENIONO: Połączenie z sesją Snowpark
 try:
+    # W SiS sesja jest tworzona automatycznie
     session = get_active_session()
 except Exception as e:
     st.error(f"Błąd inicjalizacji sesji Snowpark. Proszę uruchomić aplikację w Snowsight. Szczegóły: {e}")
     st.stop()
 
 
-name_on_order = st.text_input("Name on Smoothie:")
-st.write("The name on your Smoothie will be: ", name_on_order)
-
-# 2. Pobieranie danych z bazy za pomocą Snowpark (pobieramy obie kolumny)
+# ZMIENIONO: Pobieranie danych z bazy za pomocą Snowpark
+# Pobieramy obie kolumny do DataFrame Snowpark
 try:
-    # Wczytujemy dane do Dataframe Snowpark
-    my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+    snowpark_df = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+    # Przechwytujemy dane do Pandas DataFrame, aby stworzyć szybkie mapowanie
+    fruit_data_for_map = snowpark_df.to_pandas()
 except Exception as e:
-    st.warning("Nie można załadować tabeli FRUIT_OPTIONS. Sprawdź kontekst roli i uprawnienia.")
+    st.warning("Nie znaleziono tabeli FRUIT_OPTIONS. Sprawdź kontekst roli i uprawnienia.")
     st.stop()
 
 
-# 3. PRZECHWYCENIE DANYCH DO PANDAS (Operacja kończąca musi być wykonana tylko raz)
-# Konwersja Snowpark DataFrame do Pandas DataFrame jest konieczna dla st.multiselect
-try:
-    fruit_data_for_app = my_dataframe.to_pandas()
-    fruit_options = fruit_data_for_app['FRUIT_NAME'].tolist()
-except Exception as e:
-    st.warning("Błąd konwersji danych na listę opcji.")
-    st.stop()
+# Tworzenie mapy i listy opcji
+fruit_options = fruit_data_for_app['FRUIT_NAME'].tolist()
+fruit_search_map = {row['FRUIT_NAME']: row['SEARCH_ON'] for index, row in fruit_data_for_app.iterrows()}
 
 
-# 4. Multiselect (wyświetla FRUIT_NAME)
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
     fruit_options,
@@ -56,23 +53,19 @@ ingredients_list = st.multiselect(
 if ingredients_list:
     ingredients_string = ''
     
-    # 5. Iteracja i budowanie Stringa + Wywołania API
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + ' '
         
-        # Logika biznesowa: filtrujemy lokalny Pandas DataFrame, który jest już załadowany.
-        # Jest to szybsze i bardziej niezawodne niż ponowne użycie Snowpark DF.
-        search_term_row = fruit_data_for_app[fruit_data_for_app['FRUIT_NAME'] == fruit_chosen]
+        # 1. Określenie terminu wyszukiwania z mapy (zachowanie logiki biznesowej)
+        # Używamy mapy Pandas, aby uniknąć kolejnych zapytań do DB w pętli
+        search_term = fruit_search_map.get(fruit_chosen, fruit_chosen)
         
-        if not search_term_row.empty:
-            # Używamy SEARCH_ON do wywołania API
-            search_term = search_term_row['SEARCH_ON'].iloc[0]
-            
-            st.subheader(fruit_chosen + ' Nutrition Information')
-            
-            # Wywołanie API (wewnątrz pętli)
-            smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_term)
-            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+        # 2. Wywołanie API
+        st.subheader(fruit_chosen + ' Nutrition Information')
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_term)
+        
+        # 3. Wyświetlenie danych z API
+        st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
     
     # Budowa instrukcji INSERT
@@ -86,6 +79,6 @@ if ingredients_list:
     time_to_insert = st.button('Submit Order')
 
     if time_to_insert:
-        # Wykonanie INSERT za pomocą Snowpark
+        # ZMIENIONO: Wykonanie INSERT za pomocą Snowpark
         session.sql(my_insert_stmt).collect()
         st.success('Your Smoothie is ordered!', icon="✅")
