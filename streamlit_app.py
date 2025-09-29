@@ -3,21 +3,33 @@ import streamlit as st
 import requests
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
+import pandas as pd
 
 # Write directly to the app
 st.title(f" :cup_with_straw: Example Streamlit App :cup_with_straw: {st.__version__}")
 st.write(
     """Witaj w aplikacji Smoothie Ordering App!"""
+    """Proszę uruchom tę aplikację w Snowsight (Streamlit-in-Snowflake)"""
 )
 
 # 1. Połączenie z sesją Snowpark
-session = get_active_session()
+try:
+    session = get_active_session()
+except Exception as e:
+    st.error(f"Błąd połączenia Snowpark. Aplikacja musi być uruchomiona w środowisku Snowflake. Szczegóły: {e}")
+    st.stop() # Zatrzymanie aplikacji, jeśli sesja nie może być utworzona
+
 
 name_on_order = st.text_input("Name on Smoothie:")
 st.write("The name on your Smoothie will be: ", name_on_order)
 
 # 2. Pobieranie danych z bazy za pomocą Snowpark (pobieramy obie kolumny)
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+try:
+    my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+except Exception as e:
+    st.warning("Nie znaleziono tabeli FRUIT_OPTIONS. Upewnij się, że używasz poprawnego kontekstu roli.")
+    st.stop()
+
 
 # Konwersja DataFrame Snowpark na listę dla multiselect (tylko FRUIT_NAME do wyświetlenia)
 fruit_options = my_dataframe.select('FRUIT_NAME').to_pandas()['FRUIT_NAME'].tolist()
@@ -30,7 +42,7 @@ ingredients_list = st.multiselect(
 )
 
 # ------------------
-# Sekcja logiki biznesowej i wywołań API (niezmieniona)
+# Sekcja logiki biznesowej i wywołań API
 # ------------------
 
 if ingredients_list:
