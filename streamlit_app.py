@@ -28,16 +28,18 @@ except Exception as e:
 # Pobieramy obie kolumny do DataFrame Snowpark
 try:
     snowpark_df = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
-    # Przechwytujemy dane do Pandas DataFrame, aby stworzyć szybkie mapowanie
-    fruit_data_for_map = snowpark_df.to_pandas()
+    # PRZECHWYTUJEMY DANE JAKO PANDAS LUB LISTA W JEDNYM MIEJSCU, ABY STWORZYĆ MAPOWANIE.
+    fruit_data_for_app = snowpark_df.to_pandas()
 except Exception as e:
     st.warning("Nie znaleziono tabeli FRUIT_OPTIONS. Sprawdź kontekst roli i uprawnienia.")
     st.stop()
 
 
 # Tworzenie mapy i listy opcji
+# PONIŻSZE ZMIENNE SĄ TERAZ OPARTE O PANDAS DATAFRAME:
 fruit_options = fruit_data_for_app['FRUIT_NAME'].tolist()
-fruit_search_map = {row['FRUIT_NAME']: row['SEARCH_ON'] for index, row in fruit_data_for_app.iterrows()}
+# Ulepszone tworzenie słownika mapującego z Pandas DataFrame
+fruit_search_map = fruit_data_for_app.set_index('FRUIT_NAME')['SEARCH_ON'].to_dict()
 
 
 ingredients_list = st.multiselect(
@@ -57,7 +59,7 @@ if ingredients_list:
         ingredients_string += fruit_chosen + ' '
         
         # 1. Określenie terminu wyszukiwania z mapy (zachowanie logiki biznesowej)
-        # Używamy mapy Pandas, aby uniknąć kolejnych zapytań do DB w pętli
+        # Używamy słownika Pandas dla szybkiego dostępu (O(1))
         search_term = fruit_search_map.get(fruit_chosen, fruit_chosen)
         
         # 2. Wywołanie API
@@ -79,6 +81,6 @@ if ingredients_list:
     time_to_insert = st.button('Submit Order')
 
     if time_to_insert:
-        # ZMIENIONO: Wykonanie INSERT za pomocą Snowpark
+        # Wykonanie INSERT za pomocą Snowpark
         session.sql(my_insert_stmt).collect()
         st.success('Your Smoothie is ordered!', icon="✅")
