@@ -6,7 +6,7 @@ from snowflake.snowpark.functions import col
 import pandas as pd
 
 # Write directly to the app
-st.title(f" :cup_with_straw: Example Streamlit App :cup_with_straw: {st.__version__}")
+st.title("Customize Your Smoothie!")
 st.write(
     """Witaj w aplikacji Smoothie Ordering App!"""
     """Proszę uruchom tę aplikację w Snowsight (Streamlit-in-Snowflake)"""
