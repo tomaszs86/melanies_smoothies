@@ -1,44 +1,37 @@
 # Import python packages
 import streamlit as st
-import snowflake.connector
 import requests
+from snowflake.snowpark.context import get_active_session
+from snowflake.snowpark.functions import col
 
 # Write directly to the app
 st.title(f" :cup_with_straw: Example Streamlit App :cup_with_straw: {st.__version__}")
 st.write(
-  """Replace this example with your own code!
-  **And if you're new to Streamlit,** check
-  out our easy-to-follow guides at
-  [docs.streamlit.io](https://docs.streamlit.io).
-  """
+    """Witaj w aplikacji Smoothie Ordering App!"""
 )
+
+# 1. Połączenie z sesją Snowpark
+session = get_active_session()
 
 name_on_order = st.text_input("Name on Smoothie:")
 st.write("The name on your Smoothie will be: ", name_on_order)
 
-# Connect to Snowflake (using secrets.toml)
-conn = snowflake.connector.connect(
-    user=st.secrets["user"],
-    password=st.secrets["password"],
-    account=st.secrets["account"],
-    warehouse=st.secrets["warehouse"],
-    database=st.secrets["database"],
-    schema=st.secrets["schema"]
-)
-cur = conn.cursor()
+# 2. Pobieranie danych z bazy za pomocą Snowpark (pobieramy obie kolumny)
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
 
-# Get fruit options
-cur.execute("SELECT FRUIT_NAME FROM smoothies.public.fruit_options")
-fruit_options = [row[0] for row in cur.fetchall()]
+# Konwersja DataFrame Snowpark na listę dla multiselect (tylko FRUIT_NAME do wyświetlenia)
+fruit_options = my_dataframe.select('FRUIT_NAME').to_pandas()['FRUIT_NAME'].tolist()
 
+# 3. Multiselect (wyświetla FRUIT_NAME)
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
     fruit_options,
     max_selections=5
 )
 
-smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
-sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+# ------------------
+# Sekcja logiki biznesowej i wywołań API (niezmieniona)
+# ------------------
 
 if ingredients_list:
     ingredients_string = ''
@@ -46,10 +39,20 @@ if ingredients_list:
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + ' '
         
-    st.subheader(fruit_chosen + ' Nutrition Information')
-    smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
-    sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-  
+        # Logika biznesowa: dla każdego owocu pobierz odpowiedni SEARCH_ON
+        search_term_df = my_dataframe.filter(col('FRUIT_NAME') == fruit_chosen).collect()
+        
+        if search_term_df:
+            # Używamy SEARCH_ON do wywołania API
+            search_term = search_term_df[0]['SEARCH_ON']
+            
+            st.subheader(fruit_chosen + ' Nutrition Information')
+            # Wywołanie API następuje wewnątrz pętli, dla każdego wybranego owocu
+            smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_term)
+            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+
+    
+    # Budowa instrukcji INSERT
     my_insert_stmt = f"""
         INSERT INTO smoothies.public.orders(ingredients, name_on_order)
         VALUES ('{ingredients_string}', '{name_on_order}')
@@ -60,6 +63,6 @@ if ingredients_list:
     time_to_insert = st.button('Submit Order')
 
     if time_to_insert:
-        cur.execute(my_insert_stmt)
-        conn.commit()
+        # Wykonanie INSERT za pomocą Snowpark
+        session.sql(my_insert_stmt).collect()
         st.success('Your Smoothie is ordered!', icon="✅")
