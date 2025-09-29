@@ -14,11 +14,16 @@ connection_parameters = {
 }
 session = Session.builder.configs(connection_parameters).create()
 
-fruit_df = session.table("smoothies.public.fruit_options").select(col("FRUIT_NAME"))
-fruit_options = [row["FRUIT_NAME"] for row in fruit_df.collect()]
+my_dataframe = session.table("smoothies.public.fruit_options").select(col("FRUIT_NAME"), col("SEARCH_ON"))
+
+panda_df = my_dataframe.to_pandas()
+st.dataframe(panda_df)
+st.stop()
+
+fruit_options = panda_df['FRUIT_NAME'].tolist()
 
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
-    fruit_options,
+    options=fruit_options,
     max_selections=5
 )
