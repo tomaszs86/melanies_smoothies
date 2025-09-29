@@ -3,6 +3,18 @@ from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
 import requests
 
+st.title(f" :cup_with_straw: Example Streamlit App :cup_with_straw: {st.__version__}")
+st.write(
+  """Replace this example with your own code!
+  **And if you're new to Streamlit,** check
+  out our easy-to-follow guides at
+  [docs.streamlit.io](https://docs.streamlit.io).
+  """
+)
+
+name_on_order = st.text_input("Name on Smoothie:")
+st.write("The name on your Smoothie will be: ", name_on_order)
+
 # Snowpark session
 connection_parameters = {
     "user": st.secrets["user"],
@@ -17,8 +29,8 @@ session = Session.builder.configs(connection_parameters).create()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col("FRUIT_NAME"), col("SEARCH_ON"))
 
 panda_df = my_dataframe.to_pandas()
-st.dataframe(panda_df)
-st.stop()
+# st.dataframe(panda_df)
+# st.stop()
 
 fruit_options = panda_df['FRUIT_NAME'].tolist()
 
@@ -36,6 +48,9 @@ if ingredients_list:
         smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{fruit_chosen}")
         sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
+    search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+    st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
+    
     ingredients_string = ' '.join(ingredients_list)
     orders_df = session.create_dataframe(
         [[ingredients_string, name_on_order]],
