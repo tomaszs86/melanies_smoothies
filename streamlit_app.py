@@ -17,12 +17,12 @@ st.write("The name on your Smoothie will be: ", name_on_order)
 
 # Connect to Snowflake (using secrets.toml)
 conn = snowflake.connector.connect(
-    user=st.secrets["snowflake"]["user"],
-    password=st.secrets["snowflake"]["password"],
-    account=st.secrets["snowflake"]["account"],
-    warehouse=st.secrets["snowflake"]["warehouse"],
-    database=st.secrets["snowflake"]["database"],
-    schema=st.secrets["snowflake"]["schema"]
+    user=st.secrets["user"],
+    password=st.secrets["password"],
+    account=st.secrets["account"],
+    warehouse=st.secrets["warehouse"],
+    database=st.secrets["database"],
+    schema=st.secrets["schema"]
 )
 cur = conn.cursor()
 
