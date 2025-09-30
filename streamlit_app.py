@@ -77,8 +77,8 @@ if ingredients_list:
     if time_to_insert:
         # Wstawienie danych do tabeli
         # orders_df.write.insert_into("smoothies.public.orders")
+        
         session.sql(f"""
-        INSERT INTO smoothies.public.orders (name_on_order, ingredients)
-        VALUES ('{name_on_order}', '{ingredients_string}')
-""").collect()
+        INSERT INTO smoothies.public.orders (NAME_ON_ORDER, INGREDIENTS) VALUES ('{name_on_order}', '{ingredients_string}')""").collect()
+
         st.success('Your Smoothie is ordered!', icon="✅")
