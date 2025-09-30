@@ -66,8 +66,8 @@ if ingredients_list:
     
     # Tworzenie Snowpark DataFrame dla INSERT
     orders_df = session.create_dataframe(
-        [[name_on_order, ingredients_string, "DEFAULT", "DEFAULT", "DEFAULT"]],
-        schema=["name_on_order", "ingredients", "ORDER_UID", "ORDER_FILLED", "ORDER_TS"]        
+        [[name_on_order, ingredients_string]],
+        schema=["name_on_order", "ingredients"]        
     )
 
     st.write("Order preview:")
@@ -76,5 +76,9 @@ if ingredients_list:
     time_to_insert = st.button('Submit Order')
     if time_to_insert:
         # Wstawienie danych do tabeli
-        orders_df.write.insert_into("smoothies.public.orders")
+        # orders_df.write.insert_into("smoothies.public.orders")
+        session.sql(f"""
+        INSERT INTO smoothies.public.orders (name_on_order, ingredients)
+        VALUES ('{name_on_order}', '{ingredients_string}')
+""").collect()
         st.success('Your Smoothie is ordered!', icon="✅")
