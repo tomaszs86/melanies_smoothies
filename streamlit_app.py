@@ -66,8 +66,8 @@ if ingredients_list:
     
     # Tworzenie Snowpark DataFrame dla INSERT
     orders_df = session.create_dataframe(
-        [[name_on_order, ingredients_string]],
-        schema=["name_on_order", "ingredients"]
+        [[name_on_order, ingredients_string, "DEFAULT", "DEFAULT", "DEFAULT"]],
+        schema=["name_on_order", "ingredients", "ORDER_UID", "ORDER_FILLED", "ORDER_TS"]        
     )
 
     st.write("Order preview:")
