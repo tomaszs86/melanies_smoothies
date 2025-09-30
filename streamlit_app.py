@@ -76,5 +76,5 @@ if ingredients_list:
     time_to_insert = st.button('Submit Order')
     if time_to_insert:
         # Wstawienie danych do tabeli
-        orders_df.write.mode("append").save_as_table("smoothies.public.orders",  mode="append", column_order=["name_on_order", "ingredients"])
+        orders_df.write.insert_into("smoothies.public.orders")
         st.success('Your Smoothie is ordered!', icon="✅")
